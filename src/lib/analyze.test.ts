@@ -20,6 +20,7 @@ describe("classifyRoles", () => {
     ["Demonic Tutor", "Search your library for a card, put that card into your hand, then shuffle.", ["Sorcery"], "tutor"],
     ["Time Warp", "Target player takes an extra turn after this one.", ["Sorcery"], "extraturn"],
     ["Armageddon", "Destroy all lands.", ["Sorcery"], "mld"],
+    ["Living Death", "Each player exiles all creature cards from their graveyard, then sacrifices all creatures they control, then puts all cards they exiled this way onto the battlefield.", ["Sorcery"], "recursion"],
   ])("%s → %s", (name, oracleText, types, role) => {
     expect(classifyRoles(card({ name, oracleText, types }))).toContain(role);
   });

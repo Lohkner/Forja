@@ -62,7 +62,8 @@ const RX = {
     /(gains?|have|has) (hexproof|indestructible|shroud|protection from)|counter target spell that targets|phase out/i,
   extraturn: /takes? an extra turn/i,
   mld: /destroy all lands|each player sacrifices (all|half the) lands|destroy all nonbasic lands/i,
-  recursion: /return (target|up to one target|another target|all|each)[^.]* (card|cards) from (your|a) graveyard/i,
+  recursion:
+    /return (target|up to one target|another target|all|each)[^.]* (card|cards) from (your|a) graveyard|(put|return)s? [^.]*cards? [^.]*from (your|a|their|all) graveyards? onto the battlefield|exiles? all creature cards from (their|your) graveyards?[^.]*puts? all cards (they )?exiled this way onto the battlefield/i,
   wincon:
     /you win the game|each opponent loses (\d+|x|half)|each opponent loses the game|deals? (\d+|x) damage to each opponent|creatures you control get \+\d+\/\+\d+ and gain (trample|double strike)|infinite/i,
 };

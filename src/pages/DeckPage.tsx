@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import AiPanel from "../components/AiPanel";
+import OptimizePanel from "../components/OptimizePanel";
 import CardList from "../components/CardList";
 import { Bars, COLOR_NAME, COLOR_VAR, CurveChart, ManaPips } from "../components/Charts";
 import HealthList from "../components/HealthList";
@@ -8,7 +9,8 @@ import { analyzeDeck, COLORS, healthChecks, type Analysis } from "../lib/analyze
 import { estimateBracket } from "../lib/bracket";
 import { parseDeckList } from "../lib/parse";
 import { fetchCards } from "../lib/scryfall";
-import { getDeck, saveDeck } from "../lib/storage";
+import { applyChanges, type Change } from "../lib/optimize";
+import { getDeck, newDeckId, saveDeck } from "../lib/storage";
 import type { Deck, ManaColor } from "../lib/types";
 
 const TYPE_ES: Record<string, string> = {
@@ -18,7 +20,17 @@ const TYPE_ES: Record<string, string> = {
 
 export default function DeckPage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const [deck, setDeck] = useState<Deck | undefined>(() => getDeck(id));
+  // Al navegar a otro mazo (p. ej. la copia optimizada) el componente se reutiliza: recarga el mazo.
+  useEffect(() => {
+    if (deck?.id !== id) {
+      const next = getDeck(id);
+      setDeck(next);
+      setDraft(next?.list ?? "");
+      setEditing(false);
+    }
+  }, [id, deck?.id]);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
@@ -70,6 +82,23 @@ export default function DeckPage() {
     saveDeck(next);
     setDeck(next);
     setEditing(false);
+  };
+
+  /** Guarda los cambios en una copia nueva del mazo (el original no se toca) y la abre. */
+  const applyPlan = (changes: Change[]) => {
+    const now = Date.now();
+    const copy: Deck = {
+      ...deck,
+      id: newDeckId(),
+      name: `${deck.name.replace(/ \(optimizado\)$/, "")} (optimizado)`,
+      list: applyChanges(deck.list, changes),
+      createdAt: now,
+      updatedAt: now,
+    };
+    saveDeck(copy);
+    setAnalysis(null);
+    navigate(`/mazo/${copy.id}`);
+    window.scrollTo({ top: 0 });
   };
 
   const a = analysis;
@@ -163,6 +192,9 @@ export default function DeckPage() {
               )}
             </div>
           </div>
+
+          <h2 className="h2">Cómo mejorarlo ya</h2>
+          <OptimizePanel key={deck.id} analysis={a} onApply={applyPlan} />
 
           <h2 className="h2">Optimización con IA</h2>
           <AiPanel analysis={a} bracket={bracket} />

@@ -29,11 +29,17 @@ src/                     React 19 + Vite 8 + Tailwind 4 + React Router 7 (SPA)
   lib/scryfall.ts        Datos de cartas: POST /cards/collection (75 por lote, 100 ms entre lotes), caché 7 días en localStorage.
   lib/roles.ts           Funciones de cada carta (ramp, robo, removal, barrido, tutor…) por regex sobre el texto Oracle + OVERRIDES.
   lib/analyze.ts         Totales, curva, tipos, demanda de color vs. fuentes, copias, identidad de color, chequeos de salud.
+  lib/optimize.ts        Plan de mejora por reglas (sin IA): legalidad → funciones bajo mínimo → tierras → cortes
+                         (excedentes de función primero; luego cartas sin función y sin sinergia con el comandante).
+                         applyChanges() aplica los cambios elegidos a la lista; la UI guarda el resultado como copia.
+  lib/staples.ts         Cartas recomendadas por función e identidad, sin Game Changers. Tras editarla:
+                         `node scripts/validate-staples.mjs src/lib/staples.ts` (comprueba contra Scryfall).
   lib/bracket.ts         Estimación del bracket (1-5) con Game Changers (campo game_changer de Scryfall), MLD, turnos extra, tutores.
   lib/storage.ts         Mazos en localStorage con id "local-xxxxxxxxxx" → ruta /mazo/:id.
   lib/api.ts             Cliente de /api (import y optimización en streaming).
   pages/                 HomePage (importar), DeckPage (/mazo/:id, informe completo), NotFoundPage.
-  components/            Charts (curva SVG, barras, pips), HealthList, CardList (filtros por función, vista previa), AiPanel.
+  components/            Charts (curva SVG, barras, pips), HealthList, CardList (filtros por función, vista previa),
+                         OptimizePanel («Cómo mejorarlo ya»: métricas antes/después, cambios desmarcables, aplicar en copia), AiPanel.
 server/                  Express 5, JavaScript ESM (sin paso de compilación)
   index.mjs              /api/status, /api/import, /api/optimize (Claude, streaming de texto, límite 10/10 min por IP).
   importers.mjs          Archidekt y Moxfield (el navegador no puede llamarlas por CORS).
@@ -54,6 +60,7 @@ Flujo: Home guarda el mazo en localStorage → `/mazo/:id` parsea → Scryfall �
 ## Estado
 
 Hecho (v0.1): importar por texto o enlace, análisis completo, bracket estimado, IA en streaming, mazos locales, tema claro/oscuro, tests de parser/análisis.
+Hecho (v0.2): plan de mejora inmediato por reglas (funciona también en GitHub Pages), con tests en `optimize.test.ts`.
 
 Sin probar contra los servicios reales (se escribió en un entorno sin acceso a esas webs):
 
