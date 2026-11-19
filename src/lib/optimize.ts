@@ -232,6 +232,47 @@ const THEMES: Record<string, RegExp> = {
   ataque: /\bwhenever [^.]* attacks?\b|\bcombat damage to a player\b/i,
 };
 
+/** Cartas que premian compartir tipo de criatura sin nombrar uno concreto (Coat of Arms, Kindred Discovery…). */
+const TRIBAL_GENERIC =
+  /shares? (at least one|a) creature type|creature type of your choice|choose a creature type|(the )?chosen (creature )?type|changeling|is every creature type|all creature types/i;
+
+/** Mínimo de criaturas de un mismo tipo para considerar el mazo tribal de ese tipo. */
+const TRIBE_MIN = 10;
+
+const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** «Goblin» encuentra «Goblin» y «Goblins» como palabra completa. */
+const wordRx = (t: string) => new RegExp(`\\b${escapeRx(t)}s?\\b`);
+
+const subtypesOf = (c: { typeLine: string }) =>
+  c.typeLine
+    .split(" // ")
+    .flatMap((face) => (face.split("—")[1] ?? "").trim().split(/\s+/))
+    .filter(Boolean);
+
+/**
+ * Tipos de criatura que vertebran el mazo. Tener muchos Humanos por casualidad no hace un mazo tribal:
+ * hace falta que algo premie el tipo.
+ *   - Con apoyo explícito: 5+ criaturas del tipo y el comandante (o 2+ cartas) lo nombran («Goblins you control»).
+ *   - Si nadie nombra un tipo pero hay cartas tribales genéricas (Coat of Arms…), el tipo más numeroso con TRIBE_MIN+.
+ */
+export function detectTribes(a: Analysis): string[] {
+  const counts = new Map<string, number>();
+  for (const c of a.cards) {
+    if (c.isCommander || !c.types.includes("Creature")) continue;
+    for (const t of new Set(subtypesOf(c))) counts.set(t, (counts.get(t) ?? 0) + c.qty);
+  }
+  const cmdrText = a.commanders.map((c) => c.oracleText).join("\n");
+  const others = a.cards.filter((c) => !c.isCommander);
+  const named = [...counts]
+    .filter(([t, n]) => n >= 5 && (wordRx(t).test(cmdrText) || others.filter((c) => wordRx(t).test(c.oracleText)).length >= 2))
+    .map(([t]) => t);
+  if (named.length) return named;
+
+  if (!others.some((c) => TRIBAL_GENERIC.test(c.oracleText))) return [];
+  const [top] = [...counts].sort((x, y) => y[1] - x[1]);
+  return top && top[1] >= TRIBE_MIN ? [top[0]] : [];
+}
+
 const pct = (c: DeckCard) => c.priceEur ?? c.priceUsd ?? 0;
 
 interface CutCandidate {
@@ -266,10 +307,12 @@ function cutCandidates(a: Analysis, remaining: (c: DeckCard) => number, roleTota
   // 2. Sin función, ordenadas por sinergia con el comandante.
   const cmdrText = a.commanders.map((c) => c.oracleText).join("\n");
   const themes = Object.entries(THEMES).filter(([, rx]) => rx.test(cmdrText));
-  const subtypes = new Set(a.commanders.flatMap((c) => (c.typeLine.split("—")[1] ?? "").trim().split(/\s+/).filter(Boolean)));
+  const tribes = new Set(detectTribes(a));
+  const mentionsTribe = (text: string) => [...tribes].some((t) => wordRx(t).test(text));
   const synergy = (c: DeckCard) =>
     themes.filter(([, rx]) => rx.test(c.oracleText)).length +
-    ((c.typeLine.split("—")[1] ?? "").split(/\s+/).some((t) => subtypes.has(t)) ? 1 : 0);
+    (tribes.size && subtypesOf(c).some((t) => tribes.has(t)) ? 1 : 0) +
+    (tribes.size && (mentionsTribe(c.oracleText) || TRIBAL_GENERIC.test(c.oracleText)) ? 1 : 0);
 
   const filler = eligible
     .filter((c) => !c.roles.some((r) => USEFUL_ROLES.includes(r)))
@@ -277,7 +320,7 @@ function cutCandidates(a: Analysis, remaining: (c: DeckCard) => number, roleTota
     .sort((x, y) => x.s - y.s || y.c.cmc - x.c.cmc || pct(x.c) - pct(y.c));
   for (const { c, s } of filler) {
     const base = c.cmc >= 5 ? `Coste ${c.cmc} sin función de apoyo detectada (ramp, robo, removal…)` : "No cumple ninguna función de apoyo detectada (ramp, robo, removal…)";
-    out.push({ card: c, reason: s > 0 ? `${base}, aunque comparte mecánica con tu comandante: revísala.` : `${base} ni comparte mecánicas con tu comandante.` });
+    out.push({ card: c, reason: s > 0 ? `${base}, aunque encaja con tu comandante o con la tribu del mazo: revísala.` : `${base} ni encaja con tu comandante ni con la tribu del mazo.` });
   }
   return out;
 }

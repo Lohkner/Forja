@@ -143,3 +143,41 @@ describe("optimizeDeck en un mazo de dos colores con sinergias", () => {
     expect(outs.some((n) => n.startsWith("Altar"))).toBe(false);
   });
 });
+
+describe("optimizeDeck en un mazo tribal", () => {
+  // Krenko con 20 Goblins, Coat of Arms (tribal genérica, coste 5) y 20 osos sin sinergia; falta robo.
+  const krenkoReal = card({
+    ...krenko,
+    oracleText: "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+  });
+  const coat = card({
+    name: "Coat of Arms", cmc: 5, manaCost: "{5}", typeLine: "Artifact", types: ["Artifact"],
+    oracleText: "Each creature gets +1/+1 for each other creature on the battlefield that shares at least one creature type with it.",
+  });
+  const warcry = card({ name: "Goblin Warchief Test", cmc: 3, typeLine: "Enchantment", types: ["Enchantment"], colorIdentity: ["R"], oracleText: "Goblins you control have haste." });
+  const goblins = Array.from({ length: 20 }, (_, i) => goblin(i, 2 + (i % 3)));
+  const bears = Array.from({ length: 20 }, (_, i) => card({ name: `Bear ${i}`, cmc: 2, typeLine: "Creature — Bear", types: ["Creature"], colorIdentity: ["R"] }));
+  const fill = [
+    ...Array.from({ length: 11 }, (_, i) => card({ name: `Rock ${i}`, cmc: 2, types: ["Artifact"], oracleText: "{T}: Add {R}.", producedMana: ["R"] })),
+    ...Array.from({ length: 9 }, (_, i) => card({ name: `Bolt ${i}`, cmc: 1, types: ["Instant"], oracleText: "Bolt deals 3 damage to any target.", colorIdentity: ["R"] })),
+    ...Array.from({ length: 2 }, (_, i) => card({ name: `Sweep ${i}`, cmc: 4, types: ["Sorcery"], oracleText: "Sweep deals 5 damage to each creature.", colorIdentity: ["R"] })),
+  ];
+  const rows: Array<[number, CardData, boolean?]> = [[1, krenkoReal, true], [35, mountain], [1, coat], [1, warcry], ...[...goblins, ...bears].map((c) => [1, c] as [number, CardData]), ...fill.map((c) => [1, c] as [number, CardData])];
+  const { list, analyze } = build(rows);
+  const a = analyze(list);
+  const plan = optimizeDeck(a);
+  const outs = plan.changes.flatMap((c) => (c.out ? [c.out.name] : []));
+
+  it("detecta la tribu Goblin", async () => {
+    const { detectTribes } = await import("./optimize");
+    expect(detectTribes(a)).toEqual(["Goblin"]);
+  });
+
+  it("no corta Coat of Arms, ni cartas que nombran la tribu, ni Goblins antes que los osos", () => {
+    expect(a.total).toBe(100);
+    expect(outs.length).toBeGreaterThan(0);
+    expect(outs).not.toContain("Coat of Arms");
+    expect(outs).not.toContain(warcry.name);
+    expect(outs.every((n) => n.startsWith("Bear")), outs.join(", ")).toBe(true);
+  });
+});
