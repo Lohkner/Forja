@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "forja-produccion",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file-if-exists=.env", "server/index.mjs", "--production"],
+      "port": 8787
+    },
+    {
+      "name": "forja-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    }
+  ]
+}
