@@ -15,7 +15,9 @@ npm run typecheck
 npm run build && npm start   # producción: Express sirve dist/ y /api en :8787
 ```
 
-Despliegue: `render.yaml` (Blueprint de Render, plan gratuito) o `Dockerfile` (Railway, Fly, cualquier hosting con Docker). Health check en `/api/status`. Variables: `ANTHROPIC_API_KEY` (secreta, en el panel del hosting), `ANTHROPIC_MODEL`, `TRUST_PROXY` (saltos de proxy, por defecto 1). La app es instalable (manifest en `public/`).
+Despliegue estático (activo): https://lohkner.github.io/Forja/ con `.github/workflows/pages.yml` en cada push a `main` (compila con `BASE_PATH=/Forja/` y `VITE_STATIC=1`, copia `index.html` a `404.html` para las rutas de la SPA). En modo estático (`HAS_SERVER` en `lib/api.ts`) no hay importación por enlace ni IA: solo lista en texto + Scryfall desde el navegador. Usa siempre `import.meta.env.BASE_URL` para rutas a archivos de `public/`.
+
+Despliegue con servidor (IA e importación por enlace): `render.yaml` (Blueprint de Render, plan gratuito) o `Dockerfile` (Railway, Fly, cualquier hosting con Docker). Health check en `/api/status`. Variables: `ANTHROPIC_API_KEY` (secreta, en el panel del hosting), `ANTHROPIC_MODEL`, `TRUST_PROXY` (saltos de proxy, por defecto 1). La app es instalable (manifest en `public/`).
 
 Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run build`.
 

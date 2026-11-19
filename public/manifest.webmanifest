@@ -3,12 +3,12 @@
   "short_name": "Forja",
   "description": "Analiza y optimiza tus mazos de Commander (EDH) en español.",
   "lang": "es",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0d0a14",
   "theme_color": "#0d0a14",
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

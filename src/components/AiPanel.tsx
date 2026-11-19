@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import type { Analysis } from "../lib/analyze";
-import { apiStatus, optimizeDeck } from "../lib/api";
+import { apiStatus, HAS_SERVER, optimizeDeck } from "../lib/api";
 import type { BracketResult } from "../lib/bracket";
 
 export default function AiPanel({ analysis, bracket }: { analysis: Analysis; bracket: BracketResult }) {
@@ -49,7 +49,11 @@ export default function AiPanel({ analysis, bracket }: { analysis: Analysis; bra
       <p className="text-ink-2">Plan de juego, combos, cortes y añadidos, y ajustes de la base de maná según tu comandante y el análisis.</p>
       {enabled === false && (
         <p className="mt-3 rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm">
-          La IA no está activa en este servidor. Añade <code>ANTHROPIC_API_KEY</code> a <code>.env</code> y reinicia <code>npm run dev</code>.
+          {HAS_SERVER ? (
+            <>La IA no está activa en este servidor. Añade <code>ANTHROPIC_API_KEY</code> a <code>.env</code> y reinicia <code>npm run dev</code>.</>
+          ) : (
+            <>La optimización con IA necesita el servidor de Forja y no está disponible en esta versión web. El resto del análisis funciona completo.</>
+          )}
         </p>
       )}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">

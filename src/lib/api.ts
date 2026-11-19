@@ -1,5 +1,8 @@
 /** Cliente del servidor propio (server/index.mjs). */
 
+/** false en la versión estática (GitHub Pages): sin servidor no hay importación por enlace ni IA. */
+export const HAS_SERVER = import.meta.env.VITE_STATIC !== "1";
+
 export interface ImportedDeck {
   name: string;
   source: string;
@@ -51,6 +54,7 @@ export async function optimizeDeck(req: OptimizeRequest, onText: (full: string) 
 }
 
 export async function apiStatus(): Promise<{ ai: boolean }> {
+  if (!HAS_SERVER) return { ai: false };
   try {
     const res = await fetch("/api/status");
     return res.ok ? await res.json() : { ai: false };

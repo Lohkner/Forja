@@ -20,7 +20,7 @@ export default function Layout() {
     <div className="min-h-screen">
       <header className="flex h-16 items-center gap-3 border-b border-line px-4 md:px-8">
         <Link to="/" className="flex items-center gap-2.5 text-[17px] font-extrabold" style={{ fontStretch: "112%" }}>
-          <img src="/favicon.svg" alt="" className="h-8 w-8" />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-8 w-8" />
           Forja de Mazos
         </Link>
         <span className="ml-1 hidden text-sm text-ink-3 sm:inline">Analizador de Commander</span>

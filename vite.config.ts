@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  // En GitHub Pages la web vive en una subcarpeta (/Forja/): el workflow pasa BASE_PATH.
+  base: process.env.BASE_PATH ?? "/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

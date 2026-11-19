@@ -20,7 +20,13 @@ Abre http://localhost:5173. La optimización con IA necesita `ANTHROPIC_API_KEY`
 Abre esta carpeta en Claude Code. `CLAUDE.md` explica la arquitectura, las convenciones, lo que falta probar y la hoja de ruta.
 Ideas para empezar: «prueba la importación desde Archidekt y corrígela», «añade combos con Commander Spellbook».
 
-## Producción
+## Versión web (GitHub Pages)
+
+https://lohkner.github.io/Forja/ — se publica sola con GitHub Actions en cada push a `main`
+(Settings → Pages → Source: «GitHub Actions»). Es la versión solo navegador: análisis completo pegando la lista;
+la importación por enlace y la IA necesitan el servidor (ver abajo).
+
+## Producción con servidor
 
 ```bash
 npm run build

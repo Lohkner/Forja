@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { importFromUrl } from "../lib/api";
+import { HAS_SERVER, importFromUrl } from "../lib/api";
 import { EXAMPLE_LIST } from "../lib/example";
 import { deleteDeck, listDecks, newDeckId, saveDeck } from "../lib/storage";
 
@@ -53,7 +53,7 @@ export default function HomePage() {
 
         <form onSubmit={submit} className="mt-8 max-w-3xl rounded-[20px] border border-line-2 bg-surface/85 p-3">
           <div className="flex rounded-xl bg-raise p-1 text-sm font-semibold text-ink-2" role="tablist">
-            {(["list", "url"] as Mode[]).map((m) => (
+            {((HAS_SERVER ? ["list", "url"] : ["list"]) as Mode[]).map((m) => (
               <button
                 key={m}
                 type="button"
