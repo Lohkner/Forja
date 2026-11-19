@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* Tokens de diseño. Oscuro por defecto; html[data-theme="light"] activa el claro. */
+@theme {
+  --font-sans: "Mona Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-bg: #0d0a14;
+  --color-surface: #1a1524;
+  --color-raise: rgb(255 255 255 / 0.06);
+  --color-line: rgb(236 228 255 / 0.11);
+  --color-line-2: rgb(236 228 255 / 0.2);
+  --color-ink: #f4eefb;
+  --color-ink-2: #bdb2cf;
+  --color-ink-3: #9a8fae;
+  --color-brand: #b49cff;
+  --color-cta: #7c3aed;
+  --color-cta-2: #8b5cf6;
+  --color-ok: #5bd49a;
+  --color-warn: #f5b83d;
+  --color-bad: #ff6b7a;
+  --color-info: #6fa8ff;
+  --color-mana-w: #f3ecd2;
+  --color-mana-u: #4f8fdc;
+  --color-mana-b: #8b7d97;
+  --color-mana-r: #e0563f;
+  --color-mana-g: #3fa66a;
+  --color-mana-c: #b7b1c2;
+}
+
+html[data-theme="light"] {
+  --color-bg: #ece8f3;
+  --color-surface: #fbfafe;
+  --color-raise: rgb(40 20 80 / 0.05);
+  --color-line: rgb(40 20 80 / 0.12);
+  --color-line-2: rgb(40 20 80 / 0.22);
+  --color-ink: #1b1326;
+  --color-ink-2: #4f4562;
+  --color-ink-3: #675d7d;
+  --color-brand: #6d28d9;
+  --color-cta: #6d28d9;
+  color-scheme: light;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-bg);
+}
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  background-image: radial-gradient(1100px 520px at 70% -160px, rgb(124 58 237 / 0.22), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+.display {
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+@utility panel {
+  @apply rounded-2xl border border-line bg-surface/80 p-5 backdrop-blur;
+}
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line-2 bg-raise px-4 text-sm font-semibold text-ink transition hover:border-brand disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-cta {
+  @apply btn border-0 bg-cta text-white hover:bg-cta-2;
+}
+@utility field {
+  @apply w-full rounded-xl border border-line-2 bg-bg/70 px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-3 focus:outline-2 focus:outline-brand;
+}
+@utility eyebrow {
+  @apply text-xs font-bold tracking-widest text-brand uppercase;
+}
+@utility h2 {
+  @apply mt-10 mb-3 text-2xl font-extrabold;
+  font-stretch: 112%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

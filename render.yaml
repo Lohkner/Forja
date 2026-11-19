@@ -1,0 +1,20 @@
+# Blueprint de Render (https://render.com): New → Blueprint → elige este repositorio.
+# La clave de Anthropic se pone a mano en el panel (sync: false), nunca en el repositorio.
+services:
+  - type: web
+    name: forja-de-mazos
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node server/index.mjs
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "24"
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5-5
+      - key: ANTHROPIC_API_KEY
+        sync: false
