@@ -46,7 +46,7 @@ export default function DeckPage() {
       try {
         const parsed = parseDeckList(deck.list);
         const { cards, notFound } = await fetchCards(
-          parsed.entries.map((e) => e.name),
+          parsed.entries,
           (done, total) => !cancelled && setProgress(`Buscando cartas en Scryfall… ${done}/${total}`),
         );
         if (cancelled) return;

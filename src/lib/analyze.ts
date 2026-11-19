@@ -51,13 +51,13 @@ export function analyzeDeck(
   for (const e of entries) {
     const d = data.get(cardKey(e.name));
     if (!d) continue;
-    cards.push({ ...d, qty: e.qty, isCommander: e.isCommander, roles: classifyRoles(d) });
+    cards.push({ ...d, listName: e.name, qty: e.qty, isCommander: e.isCommander, roles: classifyRoles(d) });
   }
 
   // Comandante: el indicado por el usuario, los marcados en la lista o la primera criatura legendaria.
   if (commanderName) {
     const k = cardKey(commanderName);
-    cards.forEach((c) => (c.isCommander = cardKey(c.name) === k));
+    cards.forEach((c) => (c.isCommander = cardKey(c.name) === k || cardKey(c.listName) === k));
   }
   let commanders = cards.filter((c) => c.isCommander);
   if (!commanders.length) {

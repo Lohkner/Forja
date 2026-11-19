@@ -52,28 +52,60 @@ export function parseDeckList(text: string): ParsedList {
       name = m[2];
     }
 
-    // Quitar "(SET) 123" o "(SET)" al final, y "#..." de comentarios.
-    name = name
-      .replace(/\s+\([A-Za-z0-9]{2,6}\)(\s+[\w★\-]+)?\s*$/, "")
-      .replace(/\s+#.*$/, "")
-      .trim();
-
-    if (!name || qty <= 0) {
+    const card = cleanCardName(name);
+    if (!card.name || qty <= 0) {
       skipped.push(raw);
       continue;
     }
 
-    const key = cardKey(name);
+    const key = cardKey(card.name);
     const prev = byKey.get(key);
     if (prev) {
       prev.qty += qty;
       prev.isCommander ||= isCommander;
     } else {
-      byKey.set(key, { name, qty, isCommander });
+      const entry: ParsedEntry = { name: card.name, qty, isCommander };
+      if (card.alts.length) entry.alts = card.alts;
+      if (card.set) entry.set = card.set;
+      if (card.cn) entry.cn = card.cn;
+      byKey.set(key, entry);
     }
   }
 
   return { entries: [...byKey.values()], skipped };
+}
+
+const SET_CODE = /^[A-Za-z0-9]{2,6}$/;
+
+/**
+ * Separa de un nombre de la lista lo que no es el nombre de la carta:
+ *   "Sol Ring (CMM) 410"                                  → edición cmm, número 410
+ *   "Fire/Ice", "Fire / Ice"                              → "Fire // Ice" (Scryfall usa doble barra)
+ *   "Godzilla, Doom Inevitable (Yidaro, Wandering Monster)" → nombre + alternativo (Universes Beyond, Secret Lair)
+ *   "Lightning Bolt # comentario"                         → sin el comentario
+ */
+export function cleanCardName(raw: string): { name: string; alts: string[]; set?: string; cn?: string } {
+  let name = raw.replace(/\s+#.*$/, "").trim();
+  let set: string | undefined;
+  let cn: string | undefined;
+
+  const setM = name.match(/\s+\(([A-Za-z0-9]{2,6})\)(?:\s+([\w★-]+))?\s*$/);
+  if (setM) {
+    set = setM[1].toLowerCase();
+    cn = setM[2];
+    name = name.slice(0, setM.index).trim();
+  }
+
+  const alts: string[] = [];
+  const altM = name.match(/^(.+?)\s*\(([^()]{3,})\)$/);
+  if (altM && !SET_CODE.test(altM[2].trim())) {
+    name = altM[1].trim();
+    alts.push(altM[2].trim());
+  }
+
+  // Una sola barra entre caras → doble barra. No toca las que ya son dobles.
+  name = name.replace(/\s*(?<!\/)\/(?!\/)\s*/g, " // ").replace(/\s*\/\/\s*/g, " // ");
+  return { name, alts, set, cn };
 }
 
 export function cardKey(name: string): string {
@@ -86,5 +118,11 @@ export function cardKey(name: string): string {
 }
 
 export function listToText(entries: ParsedEntry[]): string {
-  return entries.map((e) => `${e.qty} ${e.name}${e.isCommander ? " *CMDR*" : ""}`).join("\n");
+  return entries
+    .map((e) => {
+      const alt = e.alts?.length ? ` (${e.alts[0]})` : "";
+      const print = e.set ? ` (${e.set.toUpperCase()})${e.cn ? ` ${e.cn}` : ""}` : "";
+      return `${e.qty} ${e.name}${alt}${print}${e.isCommander ? " *CMDR*" : ""}`;
+    })
+    .join("\n");
 }

@@ -34,6 +34,8 @@ export interface ScryfallCard {
   card_faces?: ScryfallFace[];
   prices?: { eur?: string | null; usd?: string | null };
   scryfall_uri?: string;
+  set?: string;
+  collector_number?: string;
 }
 
 const MAIN_TYPES = ["Creature", "Planeswalker", "Battle", "Instant", "Sorcery", "Artifact", "Enchantment", "Land"];
@@ -85,54 +87,137 @@ export interface FetchResult {
   notFound: string[];
 }
 
-/** Busca las cartas por nombre. Devuelve un mapa indexado por cardKey(nombre pedido). */
+/** Lo que sabemos de una carta de la lista para encontrarla. */
+export interface CardLookup {
+  name: string;
+  alts?: string[];
+  set?: string;
+  cn?: string;
+}
+
+type Identifier = { name: string } | { set: string; collector_number: string };
+
+/** Máximo de búsquedas aproximadas (una petición por carta) para no eternizar mazos muy rotos. */
+const MAX_FUZZY = 40;
+
+/**
+ * Nombres con los que probar una carta, del más al menos probable:
+ * la cara frontal, las demás caras y los nombres alternativos (con sus caras).
+ * Scryfall acepta cualquier cara suelta («Fire», «Stomp») pero no «Fire // Ice» completo.
+ */
+export function nameCandidates(l: CardLookup): string[] {
+  const out: string[] = [];
+  for (const full of [l.name, ...(l.alts ?? [])]) {
+    for (const face of full.split(" // ")) {
+      const f = face.trim();
+      if (f && !out.some((x) => cardKey(x) === cardKey(f))) out.push(f);
+    }
+  }
+  return out;
+}
+
+/**
+ * Busca las cartas en Scryfall. Devuelve un mapa indexado por cardKey(nombre en la lista).
+ * Va en cascada para encontrar también cartas de doble cara, partidas y Universes Beyond / Secret Lair
+ * con nombre alternativo («Godzilla, Doom Inevitable» → Yidaro, Wandering Monster):
+ *   1. Edición + número de coleccionista, si la lista los trae (la impresión exacta).
+ *   2. Por nombre, con la cara frontal.
+ *   3. Por nombre, con las otras caras y los nombres alternativos.
+ *   4. Búsqueda aproximada (/cards/named?fuzzy), que entiende nombres alternativos y erratas leves.
+ */
 export async function fetchCards(
-  names: string[],
+  items: Array<string | CardLookup>,
   onProgress?: (done: number, total: number) => void,
   fetchImpl: typeof fetch = fetch,
 ): Promise<FetchResult> {
+  const lookups: CardLookup[] = items.map((x) => (typeof x === "string" ? { name: x } : x));
   const cache = typeof localStorage === "undefined" ? {} : readCache();
   const now = Date.now();
   const cards = new Map<string, CardData>();
-  const missing: string[] = [];
+  let pending: CardLookup[] = [];
 
-  for (const n of names) {
-    const hit = cache[cardKey(n)];
-    if (hit && now - hit.at < CACHE_TTL_MS) cards.set(cardKey(n), hit.card);
-    else missing.push(n);
+  for (const l of lookups) {
+    const hit = cache[cardKey(l.name)];
+    if (hit && now - hit.at < CACHE_TTL_MS) cards.set(cardKey(l.name), hit.card);
+    else pending.push(l);
+  }
+  const total = pending.length;
+  const found = (l: CardLookup, sc: ScryfallCard) => {
+    const card = normalizeCard(sc);
+    cards.set(cardKey(l.name), card);
+    cache[cardKey(l.name)] = { at: now, card };
+  };
+  const progress = () => onProgress?.(total - pending.length, total);
+
+  const collection = async (ids: Identifier[]): Promise<ScryfallCard[]> => {
+    const all: ScryfallCard[] = [];
+    for (let i = 0; i < ids.length; i += BATCH) {
+      if (i > 0) await sleep(100);
+      const res = await fetchImpl(`${API}/cards/collection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ identifiers: ids.slice(i, i + BATCH) }),
+      });
+      if (!res.ok) throw new Error(`Scryfall respondió ${res.status}`);
+      all.push(...((await res.json()) as { data: ScryfallCard[] }).data);
+    }
+    return all;
+  };
+
+  // 1. Impresión exacta.
+  const withPrint = pending.filter((l) => l.set && l.cn);
+  if (withPrint.length) {
+    const res = await collection(withPrint.map((l) => ({ set: l.set!, collector_number: l.cn! })));
+    const byPrint = new Map(res.map((c) => [`${c.set}/${c.collector_number}`.toLowerCase(), c]));
+    pending = pending.filter((l) => {
+      const sc = l.set && l.cn ? byPrint.get(`${l.set}/${l.cn}`.toLowerCase()) : undefined;
+      if (sc) found(l, sc);
+      return !sc;
+    });
+    progress();
   }
 
-  const notFound: string[] = [];
-  for (let i = 0; i < missing.length; i += BATCH) {
-    const chunk = missing.slice(i, i + BATCH);
-    const res = await fetchImpl(`${API}/cards/collection`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ identifiers: chunk.map((name) => ({ name: name.split(" // ")[0] })) }),
+  // 2 y 3. Por nombre: primero la cara frontal de todas; luego, para las que falten, el resto de candidatos.
+  for (const round of [0, 1]) {
+    if (!pending.length) break;
+    if (withPrint.length || round > 0) await sleep(100);
+    const asks: Array<{ l: CardLookup; name: string }> = pending.flatMap((l) => {
+      const cands = nameCandidates(l);
+      return (round === 0 ? cands.slice(0, 1) : cands.slice(1)).map((name) => ({ l, name }));
     });
-    if (!res.ok) throw new Error(`Scryfall respondió ${res.status}`);
-    const body = (await res.json()) as { data: ScryfallCard[]; not_found?: { name: string }[] };
-
-    // Scryfall no garantiza el orden: se empareja por nombre (incluida la cara frontal).
+    if (!asks.length) continue;
+    const res = await collection(asks.map((a) => ({ name: a.name })));
+    // Scryfall no garantiza el orden: se empareja por nombre (completo y de cada cara).
     const byName = new Map<string, ScryfallCard>();
-    for (const c of body.data) {
+    for (const c of res) {
       byName.set(cardKey(c.name), c);
       c.card_faces?.forEach((f) => byName.set(cardKey(f.name), c));
     }
-    for (const n of chunk) {
-      const sc = byName.get(cardKey(n));
-      if (sc) {
-        const card = normalizeCard(sc);
-        cards.set(cardKey(n), card);
-        cache[cardKey(n)] = { at: now, card };
-      } else notFound.push(n);
-    }
-    onProgress?.(Math.min(i + BATCH, missing.length), missing.length);
-    if (i + BATCH < missing.length) await sleep(100);
+    pending = pending.filter((l) => {
+      const hit = asks.find((a) => a.l === l && byName.has(cardKey(a.name)));
+      if (hit) found(l, byName.get(cardKey(hit.name))!);
+      return !hit;
+    });
+    progress();
   }
 
-  if (missing.length && typeof localStorage !== "undefined") writeCache(cache);
-  return { cards, notFound };
+  // 4. Búsqueda aproximada, carta a carta.
+  const fuzzyOnes = pending.slice(0, MAX_FUZZY);
+  for (const l of fuzzyOnes) {
+    for (const name of [l.name, ...(l.alts ?? [])]) {
+      await sleep(100);
+      const res = await fetchImpl(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`, { headers: { Accept: "application/json" } });
+      if (res.ok) {
+        found(l, (await res.json()) as ScryfallCard);
+        pending = pending.filter((x) => x !== l);
+        break;
+      }
+    }
+    progress();
+  }
+
+  if (total && typeof localStorage !== "undefined") writeCache(cache);
+  return { cards, notFound: pending.map((l) => l.name) };
 }
 
 /** Autocompletado de nombres (para el buscador de comandante). */

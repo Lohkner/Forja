@@ -25,8 +25,11 @@ Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run 
 
 ```
 src/                     React 19 + Vite 8 + Tailwind 4 + React Router 7 (SPA)
-  lib/parse.ts           Texto de la lista → entradas {name, qty, isCommander}. Admite Moxfield, Archidekt, MTGO, texto suelto.
-  lib/scryfall.ts        Datos de cartas: POST /cards/collection (75 por lote, 100 ms entre lotes), caché 7 días en localStorage.
+  lib/parse.ts           Texto de la lista → entradas {name, qty, isCommander, alts?, set?, cn?}. Admite Moxfield, Archidekt, MTGO,
+                         texto suelto. «A/B» → «A // B»; «Nombre (Otro nombre)» → alternativo; «(SET) 123» → impresión exacta.
+  lib/scryfall.ts        Datos de cartas, caché 7 días en localStorage. Búsqueda en cascada: edición+número → cara frontal →
+                         otras caras y nombres alternativos (POST /cards/collection, 75 por lote, 100 ms entre peticiones) →
+                         /cards/named?fuzzy (nombres de Universes Beyond/Secret Lair y erratas; máx. 40 por mazo).
   lib/roles.ts           Funciones de cada carta (ramp, robo, removal, barrido, tutor…) por regex sobre el texto Oracle + OVERRIDES.
   lib/analyze.ts         Totales, curva, tipos, demanda de color vs. fuentes, copias, identidad de color, chequeos de salud.
   lib/optimize.ts        Plan de mejora por reglas (sin IA): legalidad → funciones bajo mínimo → tierras → cortes

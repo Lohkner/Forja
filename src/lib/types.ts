@@ -19,6 +19,11 @@ export interface ParsedEntry {
   name: string;
   qty: number;
   isCommander: boolean;
+  /** Otros nombres de la misma carta (p. ej. el original de un Universes Beyond con nombre alternativo). */
+  alts?: string[];
+  /** Edición y número de coleccionista, si la lista los trae: identifican la impresión exacta. */
+  set?: string;
+  cn?: string;
 }
 
 export interface ParsedList {
@@ -46,6 +51,8 @@ export interface CardData {
 }
 
 export interface DeckCard extends CardData {
+  /** Nombre tal como aparece en la lista del usuario (puede ser un nombre alternativo o solo una cara). */
+  listName: string;
   qty: number;
   isCommander: boolean;
   roles: Role[];

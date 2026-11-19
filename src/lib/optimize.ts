@@ -20,6 +20,8 @@ export type ChangeCategory = "legal" | "ramp" | "draw" | "removal" | "wipe" | "l
 export interface CardMove {
   name: string;
   reason: string;
+  /** Nombre en la lista del usuario, si difiere (nombre alternativo, una sola cara…). */
+  listName?: string;
 }
 
 export interface Change {
@@ -76,7 +78,7 @@ export function optimizeDeck(a: Analysis): OptimizationPlan {
   const takeOut = (c: DeckCard, n: number, reason: string, category: ChangeCategory) => {
     for (let i = 0; i < n && remaining(c) > 0; i++) {
       removed.set(cardKey(c.name), (removed.get(cardKey(c.name)) ?? 0) + 1);
-      outs.push({ name: c.name, reason, category });
+      outs.push({ name: c.name, listName: c.listName !== c.name ? c.listName : undefined, reason, category });
     }
   };
 
@@ -90,7 +92,7 @@ export function optimizeDeck(a: Analysis): OptimizationPlan {
   const roleNow = (r: Role) => count((c) => c.roles.includes(r));
 
   // ── 2. Funciones por debajo del mínimo ─────────────────────────────
-  const inDeck = new Set(a.cards.map((c) => cardKey(c.name)));
+  const inDeck = new Set(a.cards.flatMap((c) => [cardKey(c.name), cardKey(c.listName)]));
   const picked = new Set<string>();
   const adds: Array<CardMove & { category: ChangeCategory; role: StapleRole }> = [];
   const pickStaples = (role: StapleRole, n: number, reason: string, category: ChangeCategory) => {
@@ -194,7 +196,7 @@ export function optimizeDeck(a: Analysis): OptimizationPlan {
       id: `c${i}`,
       // Si la salida es obligatoria (legalidad), el cambio es de legalidad aunque traiga una entrada.
       category: o?.category === "legal" ? "legal" : (add?.category ?? o.category),
-      out: o && { name: o.name, reason: o.reason },
+      out: o && { name: o.name, reason: o.reason, ...(o.listName ? { listName: o.listName } : {}) },
       in: add && { name: add.name, reason: add.reason },
     });
   }
@@ -337,7 +339,7 @@ export function applyChanges(list: string, changes: Change[]): string {
   const byKey = new Map(entries.map((e) => [cardKey(e.name), e]));
   for (const ch of changes) {
     if (ch.out) {
-      const e = byKey.get(cardKey(ch.out.name));
+      const e = byKey.get(cardKey(ch.out.listName ?? ch.out.name));
       if (e) e.qty -= 1;
     }
     if (ch.in) {
